@@ -1,0 +1,544 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Premium Light Theme */
+  --bg-color: #f8fafc;
+  --text-color: #0f172a;
+  --text-muted: #64748b;
+  --board-bg: #f1f5f9;
+  --board-title: #1e293b;
+  --board-hover: #e2e8f0;
+  --card-bg: #ffffff;
+  --card-text: #334155;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --btn-icon: #94a3b8;
+  --btn-icon-hover: #ef4444;
+  --add-btn-text: #475569;
+  --add-btn-hover-bg: #e2e8f0;
+  --add-btn-hover-text: #0f172a;
+  --accent-color: #3b82f6;
+}
+
+[data-theme="dark"] {
+  /* Premium Dark Theme */
+  --bg-color: #0f172a;
+  --text-color: #f8fafc;
+  --text-muted: #94a3b8;
+  --board-bg: #1e293b;
+  --board-title: #f1f5f9;
+  --board-hover: #334155;
+  --card-bg: #334155;
+  --card-text: #f8fafc;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --btn-icon: #64748b;
+  --btn-icon-hover: #f87171;
+  --add-btn-text: #cbd5e1;
+  --add-btn-hover-bg: #475569;
+  --add-btn-hover-text: #f8fafc;
+  --accent-color: #60a5fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+.app-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--board-hover);
+}
+
+h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+h1::before {
+  content: '⚡';
+}
+
+.theme-toggle {
+  background: var(--board-bg);
+  color: var(--text-color);
+  border: 1px solid var(--board-hover);
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.theme-toggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  background: var(--board-hover);
+}
+
+/* Container utama untuk menderetkan kolom ke samping */
+.board-container {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 20px;
+  flex: 1;
+  
+  /* Scrollbar cantik */
+  scrollbar-width: thin;
+  scrollbar-color: var(--btn-icon) transparent;
+}
+
+.board-container::-webkit-scrollbar {
+  height: 8px;
+}
+.board-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.board-container::-webkit-scrollbar-thumb {
+  background-color: var(--btn-icon);
+  border-radius: 20px;
+}
+
+/* Styling untuk setiap kolom */
+.board-column {
+  background-color: var(--board-bg);
+  border-radius: 12px;
+  min-width: 320px;
+  max-width: 320px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(0,0,0,0.02);
+  max-height: 100%;
+}
+
+.board-column h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 4px 8px;
+  color: var(--board-title);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.board-column.dragging-over {
+  background-color: var(--board-hover);
+}
+
+/* Area tempat kartu-kartu ditumpuk */
+.task-list {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  
+  /* Scrollbar cantik untuk kolom */
+  scrollbar-width: thin;
+}
+
+.task-list::-webkit-scrollbar {
+  width: 4px;
+}
+.task-list::-webkit-scrollbar-thumb {
+  background-color: var(--board-hover);
+  border-radius: 4px;
+}
+
+/* Styling untuk setiap kartu tugas */
+.task-card {
+  background-color: var(--card-bg);
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+  cursor: grab;
+  color: var(--card-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  word-break: break-word;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+  border-color: var(--accent-color);
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card.is-dragging {
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15);
+  transform: rotate(3deg) scale(1.05);
+  z-index: 1000;
+}
+
+/* Card Content and Badges */
+.task-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.task-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.task-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-priority {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Priority Colors (Light Theme) */
+.priority-low { background-color: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.priority-medium { background-color: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.priority-high { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+/* Priority Colors (Dark Theme overrides) */
+[data-theme="dark"] .priority-low { background-color: rgba(96, 165, 250, 0.2); color: #93c5fd; }
+[data-theme="dark"] .priority-medium { background-color: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+[data-theme="dark"] .priority-high { background-color: rgba(248, 113, 113, 0.2); color: #fca5a5; }
+
+/* Card Actions (Edit & Delete) */
+.task-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0; /* Hidden by default, show on hover */
+  transition: opacity 0.2s ease;
+  margin-left: 12px;
+  margin-top: -2px;
+}
+
+.task-card:hover .task-actions {
+  opacity: 1;
+}
+
+.edit-btn, .delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.edit-btn {
+  color: var(--btn-icon);
+  font-size: 15px; /* Pencil icon usually looks bigger */
+}
+
+.edit-btn:hover {
+  color: var(--accent-color);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.delete-btn {
+  color: var(--btn-icon);
+  font-size: 20px;
+}
+
+.delete-btn:hover {
+  color: var(--btn-icon-hover);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Tombol Tambah Tugas */
+.add-task-btn {
+  margin-top: 16px;
+  background-color: transparent;
+  border: none;
+  color: var(--add-btn-text);
+  cursor: pointer;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.add-task-btn::before {
+  content: '+';
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.add-task-btn:hover {
+  background-color: var(--add-btn-hover-bg);
+  color: var(--add-btn-hover-text);
+}
+
+/* Modal UI (Glassmorphism & Clean Forms) */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--board-hover);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.priority-selectors {
+  display: flex;
+  gap: 8px;
+}
+
+.priority-select-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid transparent;
+  background-color: var(--board-bg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.priority-select-btn:not(.active) {
+  opacity: 0.5;
+  color: var(--text-muted) !important;
+  background-color: var(--board-bg) !important;
+}
+
+.priority-select-btn.active {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.cancel-btn, .save-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.cancel-btn {
+  background: transparent;
+  border: 1px solid var(--board-hover);
+  color: var(--text-muted);
+}
+
+.cancel-btn:hover {
+  background: var(--board-hover);
+  color: var(--text-color);
+}
+
+.save-btn {
+  background: var(--accent-color);
+  border: none;
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.save-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.4);
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Confirm Modal */
+.confirm-modal {
+  text-align: center;
+  max-width: 320px;
+}
+
+.confirm-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.confirm-modal h3 {
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.confirm-modal p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.delete-confirm-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+  background: #ef4444;
+  border: none;
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.delete-confirm-btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(15px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

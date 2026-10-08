@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  kanban-app:
+    build: .
+    container_name: kanban_app
+    ports:
+      - "3001:3001"
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    # opsional: jika Anda ingin menggunakan database postgresql internal (bukan dari aaPanel), 
+    # Anda bisa uncomment baris di bawah ini dan tambahkan service db.
+    # depends_on:
+    #   - db
