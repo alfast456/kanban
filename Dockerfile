@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Ekspos port yang digunakan oleh backend Node.js
-EXPOSE 3001
+EXPOSE 3333
 
 # Menjalankan server backend
 CMD ["npm", "start"]
