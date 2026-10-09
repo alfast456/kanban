@@ -1,5 +1,5 @@
-# Menggunakan base image Node.js versi 18
-FROM node:18-alpine
+# Menggunakan base image Node.js versi 20
+FROM node:20-alpine
 
 # Menentukan direktori kerja di dalam container
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build
 
 # Ekspos port yang digunakan oleh backend Node.js
-EXPOSE 3333
+EXPOSE 3334
 
 # Menjalankan server backend
 CMD ["npm", "start"]
