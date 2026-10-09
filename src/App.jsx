@@ -54,6 +54,8 @@ function App() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
+  const [viewingTask, setViewingTask] = useState(null);
+
   // Fungsi untuk Menambah/Edit Tugas
   const openAddModal = (boardId) => {
     setCurrentBoardId(boardId);
@@ -236,7 +238,11 @@ function App() {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                           >
-                            <div className="task-content">
+                            <div 
+                              className="task-content" 
+                              onClick={() => setViewingTask(task)}
+                              style={{ cursor: 'pointer' }}
+                            >
                               <span className={`task-priority priority-${task.priority?.toLowerCase() || 'low'}`}>
                                 {task.priority || 'Low'}
                               </span>
@@ -279,6 +285,40 @@ function App() {
 
         </div>
       </DragDropContext>
+
+      {/* Modal Lihat Detail Tugas */}
+      {viewingTask && (
+        <div className="modal-overlay" onClick={() => setViewingTask(null)}>
+          <div className="modal-content view-modal" onClick={e => e.stopPropagation()}>
+            <div className="view-modal-header">
+              <span className={`task-priority priority-${viewingTask.priority?.toLowerCase() || 'low'}`}>
+                {viewingTask.priority || 'Low'}
+              </span>
+              <button className="close-btn" onClick={() => setViewingTask(null)}>&times;</button>
+            </div>
+            <h2 className="view-task-title">{viewingTask.content}</h2>
+            {viewingTask.description ? (
+              <div className="view-task-desc">
+                {viewingTask.description.split('\n').map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="no-desc">Tidak ada deskripsi tambahan.</p>
+            )}
+            <div className="modal-actions" style={{ marginTop: '24px' }}>
+              <button className="edit-btn-large" onClick={() => {
+                const bId = viewingTask.board_id;
+                const task = viewingTask;
+                setViewingTask(null);
+                openEditModal(task, bId);
+              }}>
+                ✎ Edit Tugas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Konfirmasi Hapus Custom */}
       {isConfirmOpen && (
