@@ -22,10 +22,10 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const boardsRes = await fetch('http://localhost:3001/api/boards');
+        const boardsRes = await fetch('http://localhost:3333/api/boards');
         const boardsData = await boardsRes.json();
         
-        const tasksRes = await fetch('http://localhost:3001/api/tasks');
+        const tasksRes = await fetch('http://localhost:3333/api/tasks');
         const tasksData = await tasksRes.json();
 
         // Mengelompokkan tasks berdasarkan board_id agar mudah di-render
@@ -88,7 +88,7 @@ function App() {
     try {
       if (editingTaskId) {
         // Edit Mode
-        const res = await fetch(`http://localhost:3001/api/tasks/${editingTaskId}`, {
+        const res = await fetch(`http://localhost:3333/api/tasks/${editingTaskId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ board_id: boardId, content, description, priority })
@@ -102,7 +102,7 @@ function App() {
       } else {
         // Add Mode
         const position = tasks[boardId] ? tasks[boardId].length : 0;
-        const res = await fetch('http://localhost:3001/api/tasks', {
+        const res = await fetch('http://localhost:3333/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ board_id: boardId, content, description, position, priority })
@@ -132,7 +132,7 @@ function App() {
     setIsConfirmOpen(false);
 
     try {
-      await fetch(`http://localhost:3001/api/tasks/${taskId}`, {
+      await fetch(`http://localhost:3333/api/tasks/${taskId}`, {
         method: 'DELETE'
       });
 
@@ -184,7 +184,7 @@ function App() {
 
     // Kirim request PUT ke backend Node.js untuk menyimpan perubahan secara permanen
     try {
-      await fetch(`http://localhost:3001/api/tasks/${draggableId}`, {
+      await fetch(`http://localhost:3333/api/tasks/${draggableId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
