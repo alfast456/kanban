@@ -56,6 +56,14 @@ function App() {
 
   const [viewingTask, setViewingTask] = useState(null);
 
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   // Fungsi untuk Menambah/Edit Tugas
   const openAddModal = (boardId) => {
     setCurrentBoardId(boardId);
@@ -95,12 +103,14 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ board_id: boardId, content, description, priority })
         });
+        if (!res.ok) throw new Error('Gagal menyimpan tugas ke database');
         const updatedTask = await res.json();
-        
+
         setTasks(prev => ({
           ...prev,
           [boardId]: prev[boardId].map(t => t.id === editingTaskId ? updatedTask : t)
         }));
+        setToast({ type: 'success', message: 'Tugas berhasil diperbarui.' });
       } else {
         // Add Mode
         const position = tasks[boardId] ? tasks[boardId].length : 0;
@@ -109,15 +119,21 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ board_id: boardId, content, description, position, priority })
         });
+        if (!res.ok) {
+          throw new Error('Gagal menyimpan tugas ke database');
+        }
+
         const newTask = await res.json();
 
         setTasks(prev => ({
           ...prev,
           [boardId]: [...(prev[boardId] || []), newTask]
         }));
+        setToast({ type: 'success', message: 'Tugas berhasil disimpan.' });
       }
     } catch (err) {
       console.error("Gagal menyimpan tugas:", err);
+      setToast({ type: 'error', message: 'Gagal menyimpan tugas. Silakan coba lagi.' });
     }
   };
 
@@ -332,6 +348,13 @@ function App() {
               <button className="delete-confirm-btn" onClick={executeDeleteTask}>Ya, Hapus</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          {toast.message}
         </div>
       )}
 
