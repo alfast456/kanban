@@ -22,7 +22,7 @@ async function logActivity(db, taskId, userId, action, detail = null) {
 router.get('/', optionalAuth, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT DISTINCT tasks.*,
+            `SELECT tasks.*,
                 COALESCE(
                     (SELECT json_agg(json_build_object('id', l.id, 'name', l.name, 'color', l.color))
                      FROM labels l JOIN task_labels tl ON tl.label_id = l.id WHERE tl.task_id = tasks.id),
@@ -32,15 +32,18 @@ router.get('/', optionalAuth, async (req, res) => {
                 COALESCE((SELECT COUNT(*)::int FROM task_checklist_items WHERE task_id = tasks.id AND completed = true), 0) AS checklist_done
              FROM tasks
              JOIN boards ON boards.id = tasks.board_id
-             LEFT JOIN board_members ON board_members.board_id = boards.id AND board_members.user_id = $1
-             WHERE (boards.user_id = $1 OR board_members.user_id = $1 OR (boards.user_id IS NULL AND $1 IS NULL))
+             WHERE boards.id IN (
+                 SELECT b.id FROM boards b
+                 LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1
+                 WHERE (b.user_id = $1 OR bm.user_id = $1 OR (b.user_id IS NULL AND $1 IS NULL))
+             )
              ORDER BY tasks.board_id ASC, tasks.position ASC`,
             [req.user?.id || null]
         );
         res.json(result.rows);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Server Error');
+        res.status(500).json({ message: 'Server Error' });
     }
 });
 

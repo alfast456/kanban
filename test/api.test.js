@@ -180,6 +180,12 @@ test('authenticated user registration, login, profile, and board isolation flow'
     await pool.query('DELETE FROM users WHERE id IN ($1, $2)', [regDataA.user.id, regDataB.user.id]);
 });
 
+test('GET /api/tasks returns task list for anonymous visitor', async () => {
+    const res = await fetch(`${baseUrl}/api/tasks`);
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(await res.json()));
+});
+
 test('GET /health returns health status json', async () => {
     const res = await fetch(`${baseUrl}/health`);
     assert.ok(res.status === 200 || res.status === 503);
