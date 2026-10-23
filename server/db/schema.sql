@@ -1,0 +1,2 @@
+-- Schema changes are managed by numbered files in ./migrations/.
+-- Run them with: npm run db:migrate

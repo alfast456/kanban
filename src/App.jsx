@@ -1,24 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { DragDropContext } from '@hello-pangea/dnd';
+import { PRIORITIES, dueStatus, formatDueDate } from './utils/taskUtils.mjs';
+import { Modal, ConfirmModal } from './components/Modal';
+import { KanbanColumn } from './components/KanbanColumn';
+import { TaskForm } from './components/TaskForm';
+import { BoardForm } from './components/BoardForm';
+import { AuthForm } from './components/AuthForm';
 import './App.css';
-
-const priorities = ['Low', 'Medium', 'High'];
-
-function dueStatus(dueDate) {
-  if (!dueDate) return '';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(`${dueDate.slice(0, 10)}T00:00:00`);
-  const days = Math.ceil((due - today) / 86400000);
-  if (days < 0) return 'overdue';
-  if (days <= 2) return 'soon';
-  return 'upcoming';
-}
-
-function formatDueDate(dueDate) {
-  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-    .format(new Date(`${dueDate.slice(0, 10)}T00:00:00`));
-}
 
 function App() {
   const [boards, setBoards] = useState([]);
@@ -35,15 +23,33 @@ function App() {
   const [boardModal, setBoardModal] = useState(null);
   const [boardTitle, setBoardTitle] = useState('');
   const [taskForm, setTaskForm] = useState({ content: '', description: '', priority: 'Low', due_date: '' });
+  const [sharingBoard, setSharingBoard] = useState(null);
+  const [shareUsername, setShareUsername] = useState('');
+  const [shareRole, setShareRole] = useState('viewer');
+  const [authToken, setAuthToken] = useState(() => localStorage.getItem('authToken'));
+  const [authUser, setAuthUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('authUser')) || null; } catch { return null; }
+  });
+  const [authModal, setAuthModal] = useState(null);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  const apiFetch = useCallback((url, options = {}) => fetch(url, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...options.headers,
+    },
+  }), [authToken]);
+
   const loadData = useCallback(async (isInitial = false) => {
     try {
-      const [boardsRes, tasksRes] = await Promise.all([fetch('/api/boards'), fetch('/api/tasks')]);
+      const [boardsRes, tasksRes] = await Promise.all([apiFetch('/api/boards'), apiFetch('/api/tasks')]);
       if (!boardsRes.ok || !tasksRes.ok) throw new Error('Gagal mengambil data');
       const [boardsData, tasksData] = await Promise.all([boardsRes.json(), tasksRes.json()]);
       setBoards(boardsData);
@@ -57,19 +63,38 @@ function App() {
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, []);
+  }, [apiFetch]);
+
+  useEffect(() => {
+    const authResult = new URLSearchParams(window.location.search).get('auth');
+    if (authResult === 'success') {
+      fetch('/api/auth/me')
+        .then(res => res.ok ? res.json() : Promise.reject())
+        .then(({ user }) => {
+          setAuthUser(user);
+          localStorage.setItem('authUser', JSON.stringify(user));
+          loadData();
+          notify('success', 'Berhasil masuk dengan Google.');
+        })
+        .catch(() => notify('error', 'Login Google gagal.'))
+        .finally(() => window.history.replaceState({}, '', window.location.pathname));
+    } else if (authResult === 'error') {
+      notify('error', 'Login Google gagal.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [loadData]);
 
   useEffect(() => {
     loadData(true);
   }, [loadData]);
 
   useEffect(() => {
-    const eventSource = new EventSource('/api/events');
+    const eventSource = new EventSource(authToken ? `/api/events?token=${encodeURIComponent(authToken)}` : '/api/events');
 
     eventSource.onmessage = event => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.type === 'kanban:changed') {
+        if (payload.type && payload.type !== 'connected') {
           loadData();
         }
       } catch (err) {
@@ -77,8 +102,12 @@ function App() {
       }
     };
 
+    eventSource.onerror = () => {
+      console.warn('SSE connection lost, reconnecting...');
+    };
+
     return () => eventSource.close();
-  }, [loadData]);
+  }, [authToken, loadData]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -122,9 +151,8 @@ function App() {
     };
 
     try {
-      const res = await fetch(isEditing ? `/api/tasks/${task.id}` : '/api/tasks', {
+      const res = await apiFetch(isEditing ? `/api/tasks/${task.id}` : '/api/tasks', {
         method: isEditing ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('Gagal menyimpan tugas');
@@ -146,7 +174,7 @@ function App() {
   const deleteTask = async () => {
     if (!taskToDelete) return;
     try {
-      const res = await fetch(`/api/tasks/${taskToDelete.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/tasks/${taskToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal menghapus tugas');
       setTasks(previous => ({
         ...previous,
@@ -170,14 +198,31 @@ function App() {
     setBoardTitle(board.title);
   };
 
+  const shareBoard = async event => {
+    event.preventDefault();
+    if (!sharingBoard || !shareUsername.trim()) return;
+    try {
+      const res = await apiFetch(`/api/boards/${sharingBoard.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ username: shareUsername.trim(), role: shareRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal membagikan board');
+      setSharingBoard(null);
+      setShareUsername('');
+      notify('success', 'Board berhasil dibagikan.');
+    } catch (err) {
+      notify('error', err.message);
+    }
+  };
+
   const submitBoard = async event => {
     event.preventDefault();
     if (!boardTitle.trim() || !boardModal) return;
     const board = boardModal.board;
     try {
-      const res = await fetch(board ? `/api/boards/${board.id}` : '/api/boards', {
+      const res = await apiFetch(board ? `/api/boards/${board.id}` : '/api/boards', {
         method: board ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(board ? { title: boardTitle } : { title: boardTitle, position: boards.length }),
       });
       if (!res.ok) throw new Error('Gagal menyimpan board');
@@ -197,7 +242,7 @@ function App() {
   const deleteBoard = async () => {
     if (!boardToDelete) return;
     try {
-      const res = await fetch(`/api/boards/${boardToDelete.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/boards/${boardToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Gagal menghapus board');
       setBoards(previous => previous.filter(board => board.id !== boardToDelete.id));
       setTasks(previous => {
@@ -216,9 +261,13 @@ function App() {
   const onDragEnd = async result => {
     const { source, destination, draggableId } = result;
     if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
+    const sourceBoard = boards.find(board => board.id === Number(source.droppableId));
+    if (sourceBoard?.access_role === 'viewer') return notify('error', 'Akses viewer hanya dapat membaca.');
 
     const sourceBoardId = Number(source.droppableId);
     const destBoardId = Number(destination.droppableId);
+    const destinationBoard = boards.find(board => board.id === destBoardId);
+    if (destinationBoard?.access_role === 'viewer') return notify('error', 'Board tujuan hanya dapat dibaca.');
     const nextTasks = { ...tasks };
     const sourceList = [...(nextTasks[sourceBoardId] || [])];
     const destList = sourceBoardId === destBoardId ? sourceList : [...(nextTasks[destBoardId] || [])];
@@ -230,9 +279,8 @@ function App() {
     setTasks(nextTasks);
 
     try {
-      const res = await fetch(`/api/tasks/${draggableId}`, {
+      const res = await apiFetch(`/api/tasks/${draggableId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ board_id: destBoardId, position: destination.index }),
       });
       if (!res.ok) throw new Error('Gagal menyimpan perpindahan tugas');
@@ -243,15 +291,63 @@ function App() {
     }
   };
 
+  const handleAuthSubmit = async event => {
+    event.preventDefault();
+    setAuthError('');
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('username');
+    const password = formData.get('password');
+
+    try {
+      const endpoint = authModal === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal autentikasi');
+
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('authUser', JSON.stringify(data.user));
+      setAuthToken(data.token);
+      setAuthUser(data.user);
+      setLoading(true);
+      setAuthModal(null);
+      notify('success', authModal === 'register' ? 'Akun berhasil dibuat.' : 'Berhasil masuk.');
+    } catch (err) {
+      setAuthError(err.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    setAuthToken(null);
+    setAuthUser(null);
+    notify('success', 'Berhasil keluar.');
+  };
+
   if (loading) return <div>Memuat Papan Kanban...</div>;
 
   return (
     <div className="app-container">
       <header className="header">
         <h1>My Personal Kanban</h1>
-        <button className="theme-toggle" onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>
-          {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
-        </button>
+        <div className="header-actions">
+          {authUser ? (
+            <div className="user-badge">
+              <span className="user-name">@{authUser.username}</span>
+              <button className="auth-btn" onClick={handleLogout}>Keluar</button>
+            </div>
+          ) : (
+            <button className="auth-btn" onClick={() => { setAuthError(''); setAuthModal('login'); }}>Masuk</button>
+          )}
+          <button className="theme-toggle" onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>
+            {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+          </button>
+        </div>
       </header>
 
       <div className="task-filters">
@@ -265,7 +361,7 @@ function App() {
         />
         <div className="filter-priorities" aria-label="Filter prioritas">
           <button className={!filterPriority ? 'active' : ''} onClick={() => setFilterPriority('')}>Semua</button>
-          {priorities.map(priority => (
+          {PRIORITIES.map(priority => (
             <button key={priority} className={filterPriority === priority ? 'active' : ''} onClick={() => setFilterPriority(priority)}>
               {priority}
             </button>
@@ -279,50 +375,20 @@ function App() {
             const boardTasks = tasks[board.id] || [];
             const visibleTasks = boardTasks.filter(isVisibleTask);
             return (
-              <Droppable key={board.id} droppableId={String(board.id)}>
-                {(provided, snapshot) => (
-                  <section
-                    className={`board-column ${snapshot.isDraggingOver ? 'dragging-over' : ''}`}
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                  >
-                    <div className="board-header">
-                      <h2>{board.title} <span>{visibleTasks.length}/{boardTasks.length}</span></h2>
-                      <div className="board-actions">
-                        <button type="button" onClick={() => openEditBoard(board)} title="Ubah nama kolom">✎</button>
-                        <button type="button" onClick={() => setBoardToDelete(board)} title="Hapus kolom">×</button>
-                      </div>
-                    </div>
-                    <div className="task-list">
-                      {visibleTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={String(task.id)} index={index}>
-                          {(dragProvided, dragSnapshot) => (
-                            <article
-                              className={`task-card ${dragSnapshot.isDragging ? 'is-dragging' : ''}`}
-                              ref={dragProvided.innerRef}
-                              {...dragProvided.draggableProps}
-                              {...dragProvided.dragHandleProps}
-                            >
-                              <div className="task-content" onClick={() => setViewingTask(task)}>
-                                <span className={`task-priority priority-${(task.priority || 'Low').toLowerCase()}`}>{task.priority || 'Low'}</span>
-                                <span className="task-title">{task.content}</span>
-                                {task.description && <span className="task-desc">{task.description}</span>}
-                                {task.due_date && <span className={`task-due-date due-${dueStatus(task.due_date)}`}>◷ {formatDueDate(task.due_date)}</span>}
-                              </div>
-                              <div className="task-actions">
-                                <button className="edit-btn" onClick={() => openEditTask(task, board.id)} title="Edit tugas">✎</button>
-                                <button className="delete-btn" onClick={() => setTaskToDelete({ id: task.id, boardId: board.id })} title="Hapus tugas">×</button>
-                              </div>
-                            </article>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                    <button className="add-task-btn" onClick={() => openAddTask(board.id)}>Tambah Tugas</button>
-                  </section>
-                )}
-              </Droppable>
+              <KanbanColumn
+                key={board.id}
+                board={board}
+                boardTasks={boardTasks}
+                visibleTasks={visibleTasks}
+                onOpenAddTask={openAddTask}
+                onOpenEditBoard={openEditBoard}
+                onRequestDeleteBoard={setBoardToDelete}
+                onOpenShareBoard={setSharingBoard}
+                onOpenViewTask={setViewingTask}
+                onOpenEditTask={openEditTask}
+                onRequestDeleteTask={setTaskToDelete}
+                canEdit={board.access_role !== 'viewer'}
+              />
             );
           })}
           <button className="add-board-btn" onClick={openAddBoard}>Tambah Kolom</button>
@@ -342,29 +408,60 @@ function App() {
         </Modal>
       )}
 
+      {authModal && (
+        <Modal onClose={() => setAuthModal(null)}>
+          <AuthForm
+            mode={authModal}
+            onModeChange={mode => { setAuthError(''); setAuthModal(mode); }}
+            onSubmit={handleAuthSubmit}
+            onGoogleLogin={() => { window.location.href = '/api/auth/google'; }}
+            onCancel={() => setAuthModal(null)}
+            error={authError}
+          />
+        </Modal>
+      )}
+
+      {sharingBoard && (
+        <Modal onClose={() => setSharingBoard(null)}>
+          <h3>Bagikan Board</h3>
+          <form onSubmit={shareBoard}>
+            <div className="form-group">
+              <label htmlFor="share-username">Username</label>
+              <input id="share-username" value={shareUsername} onChange={event => setShareUsername(event.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label htmlFor="share-role">Akses</label>
+              <select id="share-role" value={shareRole} onChange={event => setShareRole(event.target.value)}>
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+              </select>
+            </div>
+            <div className="modal-actions"><button type="button" className="cancel-btn" onClick={() => setSharingBoard(null)}>Batal</button><button className="save-btn">Bagikan</button></div>
+          </form>
+        </Modal>
+      )}
+
       {taskModal && (
         <Modal onClose={() => setTaskModal(null)}>
-          <h3>{taskModal.task ? '✨ Edit Tugas' : '✨ Buat Tugas Baru'}</h3>
-          <form onSubmit={submitTask}>
-            <div className="form-group"><label>Judul Tugas</label><input autoFocus value={taskForm.content} onChange={event => setTaskForm(form => ({ ...form, content: event.target.value }))} placeholder="Misal: Memperbaiki bug pada halaman login..." /></div>
-            <div className="form-group"><label>Deskripsi Tambahan (Opsional)</label><textarea value={taskForm.description} onChange={event => setTaskForm(form => ({ ...form, description: event.target.value }))} placeholder="Ketik detail tugas di sini..." rows="3" /></div>
-            <div className="form-group"><label>Tanggal Tenggat (Opsional)</label><input type="date" value={taskForm.due_date} onChange={event => setTaskForm(form => ({ ...form, due_date: event.target.value }))} /></div>
-            <div className="priority-form-row">
-              <label>Tingkat Prioritas</label>
-              <div className="priority-selectors">{priorities.map(priority => <button type="button" key={priority} className={`priority-select-btn ${taskForm.priority === priority ? 'active' : ''} priority-${priority.toLowerCase()}`} onClick={() => setTaskForm(form => ({ ...form, priority }))}>{priority}</button>)}</div>
-            </div>
-            <div className="modal-actions"><button type="button" className="cancel-btn" onClick={() => setTaskModal(null)}>Batal</button><button type="submit" className="save-btn" disabled={!taskForm.content.trim()}>Simpan Tugas</button></div>
-          </form>
+          <TaskForm
+            form={taskForm}
+            isEditing={Boolean(taskModal.task)}
+            onChange={changes => setTaskForm(form => ({ ...form, ...changes }))}
+            onSubmit={submitTask}
+            onCancel={() => setTaskModal(null)}
+          />
         </Modal>
       )}
 
       {boardModal && (
         <Modal onClose={() => setBoardModal(null)}>
-          <h3>{boardModal.board ? '✎ Ubah Nama Kolom' : '+ Tambah Kolom'}</h3>
-          <form onSubmit={submitBoard}>
-            <div className="form-group"><label>Nama Kolom</label><input autoFocus value={boardTitle} onChange={event => setBoardTitle(event.target.value)} placeholder="Misal: Dalam Proses" /></div>
-            <div className="modal-actions"><button type="button" className="cancel-btn" onClick={() => setBoardModal(null)}>Batal</button><button type="submit" className="save-btn" disabled={!boardTitle.trim()}>Simpan Kolom</button></div>
-          </form>
+          <BoardForm
+            title={boardTitle}
+            isEditing={Boolean(boardModal.board)}
+            onChange={setBoardTitle}
+            onSubmit={submitBoard}
+            onCancel={() => setBoardModal(null)}
+          />
         </Modal>
       )}
 
@@ -373,14 +470,6 @@ function App() {
       {toast && <div className={`toast-notification toast-${toast.type}`}>{toast.message}</div>}
     </div>
   );
-}
-
-function Modal({ children, onClose, className = '' }) {
-  return <div className="modal-overlay" onClick={onClose}><div className={`modal-content ${className}`} onClick={event => event.stopPropagation()}>{children}</div></div>;
-}
-
-function ConfirmModal({ title, text, onCancel, onConfirm }) {
-  return <Modal onClose={onCancel} className="confirm-modal"><div className="confirm-icon">⚠️</div><h3>{title}</h3><p>{text}</p><div className="modal-actions"><button className="cancel-btn" onClick={onCancel}>Batal</button><button className="delete-confirm-btn" onClick={onConfirm}>Ya, Hapus</button></div></Modal>;
 }
 
 export default App;

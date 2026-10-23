@@ -106,6 +106,35 @@ h1::before {
   background: var(--board-hover);
 }
 
+.header-actions, .user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-name {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.auth-btn {
+  border: 1px solid var(--accent-color);
+  border-radius: 6px;
+  padding: 9px 14px;
+  background: transparent;
+  color: var(--accent-color);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-btn:hover { background: var(--accent-color); color: white; }
+.auth-divider { margin: 16px 0 10px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.google-auth-btn { width: 100%; padding: 10px; border: 1px solid var(--board-hover); border-radius: 6px; background: var(--card-bg); color: var(--text-color); cursor: pointer; font-weight: 600; }
+.google-auth-btn:hover { background: var(--board-hover); }
+.auth-switch { margin-top: 12px; border: 0; background: none; color: var(--accent-color); cursor: pointer; }
+.auth-error { color: #dc2626; font-size: 14px; }
+
 /* Container utama untuk menderetkan kolom ke samping */
 .board-container {
   display: flex;

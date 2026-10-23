@@ -7,8 +7,8 @@ WORKDIR /app
 # Menyalin package.json dan package-lock.json (jika ada)
 COPY package*.json ./
 
-# Menginstal semua dependensi
-RUN npm install
+# Menginstal dependensi sesuai lockfile
+RUN npm ci
 
 # Menyalin seluruh source code ke dalam container
 COPY . .
@@ -16,8 +16,8 @@ COPY . .
 # Membangun (build) frontend React/Vite menjadi file statis
 RUN npm run build
 
-# Ekspos port yang digunakan oleh backend Node.js
-EXPOSE 3334
+# Port internal container; host mapping diatur oleh docker-compose
+EXPOSE 3333
 
 # Menjalankan server backend
 CMD ["npm", "start"]
