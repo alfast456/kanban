@@ -24,12 +24,13 @@ export function KanbanColumn({
         >
           <div className="board-header">
             <h2>
-              {board.title} <span>{visibleTasks.length}/{boardTasks.length}</span>
+              <span className="board-title-text">{board.title}</span>
+              <span className="board-count">{visibleTasks.length}/{boardTasks.length}</span>
             </h2>
             <div className="board-actions">
-              {canEdit && <button type="button" onClick={() => onOpenEditBoard(board)} title="Ubah nama kolom">✎</button>}
-              {board.access_role === 'owner' && <button type="button" onClick={() => onOpenShareBoard(board)} title="Bagikan board">♧</button>}
-              {board.access_role === 'owner' && <button type="button" onClick={() => onRequestDeleteBoard(board)} title="Hapus kolom">×</button>}
+              {canEdit && <button type="button" onClick={() => onOpenEditBoard(board)} aria-label={`Edit board ${board.title}`} title="Ubah nama kolom">✎</button>}
+              {board.access_role === 'owner' && <button type="button" onClick={() => onOpenShareBoard(board)} aria-label={`Bagikan board ${board.title}`} title="Bagikan board">♧</button>}
+              {board.access_role === 'owner' && <button type="button" onClick={() => onRequestDeleteBoard(board)} aria-label={`Hapus board ${board.title}`} title="Hapus kolom">×</button>}
             </div>
           </div>
 

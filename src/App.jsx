@@ -343,7 +343,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="header">
-        <h1>My Personal Kanban</h1>
+        <h1><span className="brand-mark" aria-hidden="true">⚡</span><span>My Personal Kanban</span></h1>
         <div className="header-actions">
           {authUser ? (
             <div className="user-badge">
@@ -359,8 +359,18 @@ function App() {
         </div>
       </header>
 
+      <div className="board-toolbar">
+        <div>
+          <span className="eyebrow">WORKSPACE</span>
+          <h2 className="workspace-title">Board saya</h2>
+        </div>
+        <button className="add-board-btn toolbar-add-board" onClick={openAddBoard}>+ Tambah Kolom</button>
+      </div>
+
       <div className="task-filters">
-        <input
+        <label className="search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input
           className="task-search"
           type="search"
           value={searchQuery}
@@ -368,6 +378,7 @@ function App() {
           placeholder="Cari tugas..."
           aria-label="Cari tugas"
         />
+        </label>
         <div className="filter-priorities" aria-label="Filter prioritas">
           <button className={!filterPriority ? 'active' : ''} onClick={() => setFilterPriority('')}>Semua</button>
           {PRIORITIES.map(priority => (
@@ -400,7 +411,7 @@ function App() {
               />
             );
           })}
-          <button className="add-board-btn" onClick={openAddBoard}>Tambah Kolom</button>
+          <button className="add-board-btn board-add-card" onClick={openAddBoard}>+ Tambah board lain</button>
         </main>
       </DragDropContext>
 

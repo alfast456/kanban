@@ -30,8 +30,8 @@ export function TaskCard({ task, index, onOpenView, onOpenEdit, onRequestDelete,
             ))}
           </div>
           {canEdit && <div className="task-actions">
-            <button className="edit-btn" onClick={() => onOpenEdit(task)} aria-label={`Edit tugas ${task.content}`} title="Edit tugas">✎</button>
-            <button className="delete-btn" onClick={() => onRequestDelete(task)} aria-label={`Hapus tugas ${task.content}`} title="Hapus tugas">×</button>
+            <button className="edit-btn" onClick={event => { event.stopPropagation(); onOpenEdit(task); }} aria-label={`Edit tugas ${task.content}`} title="Edit tugas">✎</button>
+            <button className="delete-btn" onClick={event => { event.stopPropagation(); onRequestDelete(task); }} aria-label={`Hapus tugas ${task.content}`} title="Hapus tugas">×</button>
           </div>}
         </article>
       )}
