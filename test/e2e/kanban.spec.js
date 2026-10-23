@@ -24,6 +24,13 @@ test('register, create board, create task, edit task, and drag task', async ({ p
     await page.getByRole('button', { name: 'Simpan Tugas' }).click();
     await expect(page.getByText('E2E Task')).toBeVisible();
 
+    await page.getByText('E2E Task', { exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'E2E Task' })).toBeVisible();
+    await page.getByLabel('Checklist baru').fill('E2E checklist');
+    await page.locator('form').filter({ has: page.getByLabel('Checklist baru') }).getByRole('button', { name: 'Tambah', exact: true }).click();
+    await expect(page.getByText('E2E checklist')).toBeVisible();
+    await page.getByRole('button', { name: 'Tutup detail tugas' }).click();
+
     await page.locator('.edit-btn').first().click();
     await page.getByLabel('Judul Tugas').fill('E2E Task Updated');
     await page.getByRole('button', { name: 'Simpan Tugas' }).click();
@@ -46,10 +53,11 @@ test('register, create board, create task, edit task, and drag task', async ({ p
 });
 
 test('anonymous legacy board remains usable', async ({ page }) => {
+    const title = `Anonymous E2E ${Date.now().toString(36)}`;
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Tambah Kolom' })).toBeVisible();
     await page.getByRole('button', { name: 'Tambah Kolom' }).click();
-    await page.getByLabel('Nama Kolom').fill('Anonymous E2E');
+    await page.getByLabel('Nama Kolom').fill(title);
     await page.getByRole('button', { name: 'Simpan Kolom' }).click();
-    await expect(page.getByRole('heading', { name: /Anonymous E2E/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: new RegExp(title) })).toBeVisible();
 });

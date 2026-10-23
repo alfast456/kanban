@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { PRIORITIES, dueStatus, formatDueDate } from './utils/taskUtils.mjs';
+import { PRIORITIES } from './utils/taskUtils.mjs';
 import { Modal, ConfirmModal } from './components/Modal';
 import { KanbanColumn } from './components/KanbanColumn';
 import { TaskForm } from './components/TaskForm';
+import { TaskDetail } from './components/TaskDetail';
 import { BoardForm } from './components/BoardForm';
 import { AuthForm } from './components/AuthForm';
 import './App.css';
@@ -169,6 +170,14 @@ function App() {
       console.error('Gagal menyimpan tugas:', err);
       notify('error', 'Gagal menyimpan tugas. Silakan coba lagi.');
     }
+  };
+
+  const updateViewedTask = updatedTask => {
+    setViewingTask(updatedTask);
+    setTasks(previous => ({
+      ...previous,
+      [updatedTask.board_id]: (previous[updatedTask.board_id] || []).map(item => item.id === updatedTask.id ? updatedTask : item),
+    }));
   };
 
   const deleteTask = async () => {
@@ -396,15 +405,18 @@ function App() {
       </DragDropContext>
 
       {viewingTask && (
-        <Modal onClose={() => setViewingTask(null)} className="view-modal">
-          <div className="view-modal-header">
-            <span className={`task-priority priority-${(viewingTask.priority || 'Low').toLowerCase()}`}>{viewingTask.priority || 'Low'}</span>
-            <button className="close-btn" onClick={() => setViewingTask(null)}>×</button>
-          </div>
-          <h2 className="view-task-title">{viewingTask.content}</h2>
-          {viewingTask.due_date && <p className={`task-due-date due-${dueStatus(viewingTask.due_date)}`}>◷ Tenggat: {formatDueDate(viewingTask.due_date)}</p>}
-          {viewingTask.description ? <div className="view-task-desc">{viewingTask.description.split('\n').map((line, index) => <p key={index}>{line}</p>)}</div> : <p className="no-desc">Tidak ada deskripsi tambahan.</p>}
-          <div className="modal-actions"><button className="edit-btn-large" onClick={() => { setViewingTask(null); openEditTask(viewingTask, viewingTask.board_id); }}>✎ Edit Tugas</button></div>
+        <Modal onClose={() => setViewingTask(null)} className="view-modal task-detail-modal">
+          <TaskDetail
+            task={viewingTask}
+            board={boards.find(board => board.id === viewingTask.board_id)}
+            apiFetch={apiFetch}
+            canEdit={boards.find(board => board.id === viewingTask.board_id)?.access_role !== 'viewer'}
+            onClose={() => setViewingTask(null)}
+            onTaskChange={updateViewedTask}
+          />
+          {boards.find(board => board.id === viewingTask.board_id)?.access_role !== 'viewer' && (
+            <div className="modal-actions"><button className="edit-btn-large" onClick={() => { setViewingTask(null); openEditTask(viewingTask, viewingTask.board_id); }}>✎ Edit Tugas</button></div>
+          )}
         </Modal>
       )}
 

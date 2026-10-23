@@ -566,6 +566,161 @@ h1::before {
 .view-modal {
   padding: 24px;
 }
+
+.task-detail-modal {
+  max-width: 620px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.task-detail-description {
+  color: var(--text-muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.task-detail-error {
+  color: #ef4444;
+  font-size: 13px;
+}
+
+.task-detail-section {
+  border-top: 1px solid var(--board-hover);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.task-detail-section h3 {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.task-detail-section h3 span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.checklist-item,
+.attachment-item,
+.activity-item {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.checklist-item label,
+.label-option {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.is-complete {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.inline-delete {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.inline-delete:hover {
+  color: #ef4444;
+}
+
+.inline-form,
+.attachment-form {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.inline-form input:not([type="color"]),
+.attachment-form input {
+  background: var(--bg-color);
+  border: 1px solid var(--board-hover);
+  border-radius: 6px;
+  color: var(--text-color);
+  min-width: 0;
+  padding: 9px 10px;
+  width: 100%;
+}
+
+.inline-form input[type="color"] {
+  border: 0;
+  cursor: pointer;
+  height: 36px;
+  padding: 2px;
+  width: 42px;
+}
+
+.label-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.label-option {
+  flex: 0 1 auto;
+}
+
+.label-option input {
+  accent-color: var(--accent-color);
+}
+
+.task-label {
+  background: color-mix(in srgb, var(--label-color) 18%, transparent);
+  border-left: 3px solid var(--label-color);
+  border-radius: 4px;
+  color: var(--text-color);
+  font-size: 11px;
+  padding: 3px 7px;
+}
+
+.attachment-item {
+  justify-content: space-between;
+}
+
+.attachment-item a {
+  color: var(--accent-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-item {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.activity-item strong {
+  text-transform: capitalize;
+}
+
+.activity-item small {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.activity-item p {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.empty-detail {
+  color: var(--text-muted);
+  font-size: 13px;
+}
 .view-modal-header {
   display: flex;
   justify-content: space-between;
