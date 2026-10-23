@@ -330,7 +330,6 @@ router.delete('/:id', requireId, optionalAuth, async (req, res) => {
         for (const item of reindex(remaining.rows)) {
             await client.query('UPDATE tasks SET position = $1 WHERE id = $2', [item.position, item.id]);
         }
-        await logActivity(client, req.params.id, req.user?.id, 'deleted', 'Task dihapus');
         await client.query('COMMIT');
 
         sseService.broadcast('task:deleted', { id: Number(req.params.id) });

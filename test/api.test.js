@@ -235,6 +235,41 @@ test('PUT /api/tasks/:id rejects invalid non-numeric ID with 400', async () => {
     assert.equal(body.message, 'ID tidak valid');
 });
 
+test('DELETE /api/tasks removes task and reindexes remaining tasks', async () => {
+    const suffix = Date.now().toString(36);
+    const registration = await (await fetch(`${baseUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: `del_${suffix}`, password: 'password123' }),
+    })).json();
+    const board = await (await fetch(`${baseUrl}/api/boards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${registration.token}` },
+        body: JSON.stringify({ title: `Delete Board ${suffix}` }),
+    })).json();
+    const taskA = await (await fetch(`${baseUrl}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${registration.token}` },
+        body: JSON.stringify({ board_id: board.id, content: 'Delete me', position: 0 }),
+    })).json();
+    const taskB = await (await fetch(`${baseUrl}/api/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${registration.token}` },
+        body: JSON.stringify({ board_id: board.id, content: 'Keep me', position: 1 }),
+    })).json();
+
+    const deleted = await fetch(`${baseUrl}/api/tasks/${taskA.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${registration.token}` },
+    });
+    assert.equal(deleted.status, 200);
+    const remaining = await pool.query('SELECT id, position FROM tasks WHERE board_id = $1', [board.id]);
+    assert.deepEqual(remaining.rows, [{ id: taskB.id, position: 0 }]);
+
+    await pool.query('DELETE FROM boards WHERE id = $1', [board.id]);
+    await pool.query('DELETE FROM users WHERE id = $1', [registration.user.id]);
+});
+
 test('board collaboration and task details (checklist, activity)', async () => {
     const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const owner = { username: `own_${suffix}`, password: 'password123' };

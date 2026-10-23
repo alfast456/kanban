@@ -50,6 +50,10 @@ test('register, create board, create task, edit task, and drag task', async ({ p
     await page.mouse.move(target.x + target.width / 2, target.y + 20, { steps: 12 });
     await page.mouse.up();
     await expect(columns.nth(1).getByText('E2E Task Updated')).toBeVisible();
+
+    await columns.nth(1).locator('.delete-btn').click();
+    await page.getByRole('button', { name: 'Ya, Hapus' }).click();
+    await expect(columns.nth(1).getByText('E2E Task Updated')).toHaveCount(0);
 });
 
 test('anonymous legacy board remains usable', async ({ page }) => {
