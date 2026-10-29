@@ -5,7 +5,7 @@ async function boardAccess(db, boardId, userId, mode = 'view') {
         return res.rows[0] || null;
     }
     const result = await db.query(
-        `SELECT boards.id, boards.user_id,
+        `SELECT boards.*,
                 CASE WHEN boards.user_id = $2 THEN 'owner' ELSE board_members.role END AS role
          FROM boards LEFT JOIN board_members
            ON board_members.board_id = boards.id AND board_members.user_id = $2
@@ -34,9 +34,7 @@ async function taskAccess(db, taskId, userId, mode = 'view') {
                 CASE WHEN boards.user_id = $2 THEN 'owner' ELSE board_members.role END AS access_role
          FROM tasks JOIN boards ON boards.id = tasks.board_id
          LEFT JOIN board_members ON board_members.board_id = boards.id AND board_members.user_id = $2
-         WHERE tasks.id = $1 AND (boards.user_id = $2 OR EXISTS (
-             SELECT 1 FROM board_members permitted WHERE permitted.board_id = boards.id AND permitted.user_id = $2
-         ))`,
+         WHERE tasks.id = $1 AND (boards.user_id = $2 OR board_members.user_id = $2)`,
         [taskId, userId]
     );
     const task = result.rows[0];

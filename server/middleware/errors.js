@@ -1,5 +1,5 @@
 function notFound(req, res, next) {
-    if (req.path.startsWith('/api/')) {
+    if (req.originalUrl.startsWith('/api') || req.path.startsWith('/api') || req.baseUrl === '/api') {
         return res.status(404).json({ message: 'Endpoint tidak ditemukan', requestId: req.requestId });
     }
     next();

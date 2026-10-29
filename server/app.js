@@ -27,14 +27,18 @@ app.use('/api', require('./routes/events'));
 app.use('/api/boards', require('./routes/boards'));
 app.use('/api/tasks', require('./routes/tasks'));
 
-// Error handlers
-app.use(notFound);
-app.use(errorHandler);
+// 404 handler for API routes
+app.use('/api', notFound);
 
 // Static frontend build
 app.use(express.static(path.join(__dirname, '..', 'dist')));
-app.get(/.*/, (req, res) => {
+app.get(/(.*)/, (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
+
+// Centralized error handler
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;

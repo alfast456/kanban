@@ -25,7 +25,7 @@ function migrations() {
 }
 
 function checksum(sql) {
-    return crypto.createHash('sha256').update(sql).digest('hex');
+    return crypto.createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex');
 }
 
 async function runMigration() {

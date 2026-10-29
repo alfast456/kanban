@@ -37,12 +37,12 @@ router.get('/', optionalAuth, async (req, res) => {
                  LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1
                  WHERE (b.user_id = $1 OR bm.user_id = $1 OR (b.user_id IS NULL AND $1 IS NULL))
              )
-             ORDER BY tasks.board_id ASC, tasks.position ASC`,
+             ORDER BY tasks.board_id ASC, tasks.position ASC, tasks.id ASC`,
             [req.user?.id || null]
         );
         res.json(result.rows);
     } catch (err) {
-        console.error(err.message);
+        console.error('Error fetching tasks:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -57,6 +57,10 @@ router.post('/', optionalAuth, validateTask, async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Board not found' });
         }
+
+        // Lock board to serialize position calculations
+        await client.query('SELECT id FROM boards WHERE id = $1 FOR UPDATE', [board_id]);
+
         const existing = await client.query('SELECT * FROM tasks WHERE board_id = $1 ORDER BY position ASC, id ASC', [board_id]);
         const task = { board_id, content: content.trim(), description: description ?? null, priority, due_date: due_date || null };
         const orderedTasks = reindex(insertAt(existing.rows, task, position ?? existing.rows.length));
@@ -78,7 +82,7 @@ router.post('/', optionalAuth, validateTask, async (req, res) => {
         res.status(201).json(createdTask);
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err.message);
+        console.error('Error creating task:', err.message);
         res.status(500).json({ message: 'Server Error' });
     } finally {
         client.release();
@@ -99,22 +103,28 @@ router.put('/:id', requireId, optionalAuth, validateTask, async (req, res) => {
         }
         const sourceBoardId = currentTask.board_id;
         const destinationBoardId = board_id ?? sourceBoardId;
-        const boardIds = [...new Set([sourceBoardId, destinationBoardId])];
-        const boards = await Promise.all(boardIds.map(boardId => boardAccess(client, boardId, req.user?.id, 'edit')));
-        if (boards.some(board => !board)) {
+        const boardIds = [...new Set([sourceBoardId, destinationBoardId])].sort((a, b) => a - b);
+        const boards = await Promise.all(boardIds.map(bId => boardAccess(client, bId, req.user?.id, 'edit')));
+        if (boards.some(b => !b)) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Board not found' });
+        }
+
+        // Lock boards to serialize reordering without deadlocks
+        for (const bId of boardIds) {
+            await client.query('SELECT id FROM boards WHERE id = $1 FOR UPDATE', [bId]);
         }
 
         const result = await client.query(
             `UPDATE tasks
              SET board_id = $1,
                  content = COALESCE($2, content),
-                 description = COALESCE($3, description),
+                 description = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE description END,
                  priority = COALESCE($4, priority),
-                 due_date = CASE WHEN $5 = true THEN NULL WHEN $6::date IS NOT NULL THEN $6::date ELSE due_date END
+                 due_date = CASE WHEN $5 = true THEN NULL WHEN $6::date IS NOT NULL THEN $6::date ELSE due_date END,
+                 updated_at = CURRENT_TIMESTAMP
              WHERE id = $7 RETURNING *`,
-            [destinationBoardId, content, description, priority, clear_due_date, due_date || null, id]
+            [destinationBoardId, content ? content.trim() : null, description !== undefined ? description : null, priority, clear_due_date, due_date || null, id]
         );
         let updatedTask = result.rows[0];
         const movedBoard = sourceBoardId !== destinationBoardId;
@@ -149,7 +159,7 @@ router.put('/:id', requireId, optionalAuth, validateTask, async (req, res) => {
         res.json(updatedTask);
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err.message);
+        console.error('Error updating task:', err.message);
         res.status(500).json({ message: 'Server Error' });
     } finally {
         client.release();
@@ -182,7 +192,7 @@ router.put('/:id/labels', requireId, optionalAuth, async (req, res) => {
         res.json({ task_id: Number(req.params.id), label_ids: labelIds });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err.message);
+        console.error('Error updating task labels:', err.message);
         res.status(500).json({ message: 'Server Error' });
     } finally {
         client.release();
@@ -196,6 +206,7 @@ router.get('/:id/attachments', requireId, optionalAuth, async (req, res) => {
         const result = await pool.query('SELECT * FROM task_attachments WHERE task_id = $1 ORDER BY created_at DESC', [req.params.id]);
         res.json(result.rows);
     } catch (err) {
+        console.error('Error fetching attachments:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -215,6 +226,7 @@ router.post('/:id/attachments', requireId, optionalAuth, async (req, res) => {
         sseService.broadcast('task:updated', { taskId: Number(req.params.id) });
         res.status(201).json(result.rows[0]);
     } catch (err) {
+        console.error('Error adding attachment:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -230,6 +242,7 @@ router.delete('/:id/attachments/:attachmentId', requireId, optionalAuth, async (
         sseService.broadcast('task:updated', { taskId: Number(req.params.id) });
         res.status(204).end();
     } catch (err) {
+        console.error('Error deleting attachment:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -241,6 +254,7 @@ router.get('/:id/checklist', requireId, optionalAuth, async (req, res) => {
         const result = await pool.query('SELECT * FROM task_checklist_items WHERE task_id = $1 ORDER BY position, id', [req.params.id]);
         res.json(result.rows);
     } catch (err) {
+        console.error('Error fetching checklist:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -259,6 +273,7 @@ router.post('/:id/checklist', requireId, optionalAuth, async (req, res) => {
         sseService.broadcast('task:updated', { taskId: Number(req.params.id) });
         res.status(201).json(result.rows[0]);
     } catch (err) {
+        console.error('Error creating checklist item:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -279,6 +294,7 @@ router.put('/:id/checklist/:itemId', requireId, optionalAuth, async (req, res) =
         sseService.broadcast('task:updated', { taskId: Number(req.params.id) });
         res.json(result.rows[0]);
     } catch (err) {
+        console.error('Error updating checklist item:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -292,6 +308,7 @@ router.delete('/:id/checklist/:itemId', requireId, optionalAuth, async (req, res
         sseService.broadcast('task:updated', { taskId: Number(req.params.id) });
         res.status(204).end();
     } catch (err) {
+        console.error('Error deleting checklist item:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -306,6 +323,7 @@ router.get('/:id/activity', requireId, optionalAuth, async (req, res) => {
         );
         res.json(result.rows);
     } catch (err) {
+        console.error('Error fetching task activity:', err.message);
         res.status(500).json({ message: 'Server Error' });
     }
 });
@@ -336,7 +354,7 @@ router.delete('/:id', requireId, optionalAuth, async (req, res) => {
         res.json({ message: 'Task deleted successfully' });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err.message);
+        console.error('Error deleting task:', err.message);
         res.status(500).json({ message: 'Server Error' });
     } finally {
         client.release();

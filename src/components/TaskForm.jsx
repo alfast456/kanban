@@ -11,7 +11,7 @@ export function TaskForm({ form, onChange, onSubmit, onCancel, isEditing }) {
           <label htmlFor="task-content">Judul Tugas</label>
           <input
             id="task-content"
-            autoFocus
+            autoFocus={!isEditing}
             value={form.content}
             onChange={event => onChange({ content: event.target.value })}
             placeholder="Misal: Memperbaiki bug pada halaman login..."

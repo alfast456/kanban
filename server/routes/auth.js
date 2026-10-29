@@ -20,6 +20,10 @@ function clearCookie(res, name) {
     setCookie(res, name, '', 0);
 }
 
+function clearAuthCookie(res) {
+    clearCookie(res, 'kanban_token');
+}
+
 function readCookie(req, name) {
     const item = (req.get('Cookie') || '').split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`));
     return item ? decodeURIComponent(item.slice(name.length + 1)) : null;

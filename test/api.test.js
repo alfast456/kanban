@@ -82,6 +82,12 @@ test('GET /api/auth/me rejects missing token', async () => {
     assert.equal((await res.json()).message, 'Autentikasi dibutuhkan');
 });
 
+test('POST /api/auth/logout clears auth cookie without error', async () => {
+    const res = await fetch(`${baseUrl}/api/auth/logout`, { method: 'POST' });
+    assert.equal(res.status, 204);
+    assert.ok(res.headers.get('set-cookie')?.includes('kanban_token=;'));
+});
+
 test('authenticated user registration, login, profile, and board isolation flow', async () => {
     const suffix = Date.now().toString(36);
     const userA = { username: `user_a_${suffix}`, password: 'password123' };

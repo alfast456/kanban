@@ -15,12 +15,22 @@ function removeClient(res) {
 
 function broadcast(type, payload = {}) {
     const message = `data: ${JSON.stringify({ type, ...payload })}\n\n`;
-    // ponytail: event carries no board data; clients reload only data their API permission allows.
     for (const client of sseClients.keys()) client.write(message);
+}
+
+function closeAll() {
+    clearInterval(heartbeat);
+    for (const client of sseClients) {
+        try {
+            client.end();
+        } catch {}
+    }
+    sseClients.clear();
 }
 
 module.exports = {
     addClient,
     removeClient,
     broadcast,
+    closeAll,
 };

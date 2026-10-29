@@ -56,6 +56,21 @@ test('register, create board, create task, edit task, and drag task', async ({ p
     await expect(columns.nth(1).getByText('E2E Task Updated')).toHaveCount(0);
 });
 
+test('editing task description keeps focus on textarea and saves properly', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Tambah Tugas' }).first().click();
+    await page.getByLabel('Judul Tugas').fill('Desc Focus Test');
+
+    const descInput = page.getByLabel('Deskripsi Tambahan (Opsional)');
+    await descInput.click();
+    await descInput.pressSequentially('Ini deskripsi pengujian', { delay: 30 });
+    await expect(descInput).toBeFocused();
+    await expect(descInput).toHaveValue('Ini deskripsi pengujian');
+
+    await page.getByRole('button', { name: 'Simpan Tugas' }).click();
+    await expect(page.getByText('Desc Focus Test')).toBeVisible();
+});
+
 test('anonymous legacy board remains usable', async ({ page }) => {
     const title = `Anonymous E2E ${Date.now().toString(36)}`;
     await page.goto('/');

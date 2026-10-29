@@ -4,18 +4,25 @@ import { IconAlert } from './Icons';
 export function Modal({ children, onClose, className = '' }) {
   const dialogRef = useRef(null);
   const previousFocus = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const dialog = dialogRef.current;
     previousFocus.current = document.activeElement;
-    const focusable = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const first = dialog?.querySelector(focusable);
-    first?.focus();
+
+    // Hanya fokuskan elemen pertama satu kali saat modal pertama kali dibuka (mount)
+    // dan hanya jika fokus saat ini belum berada di dalam dialog.
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const focusable = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      const first = dialog.querySelector(focusable);
+      first?.focus();
+    }
 
     const handleKeyDown = event => {
-      if (event.key === 'Escape') return onClose();
+      if (event.key === 'Escape') return onCloseRef.current?.();
       if (event.key !== 'Tab' || !dialog) return;
-      const elements = [...dialog.querySelectorAll(focusable)].filter(element => !element.disabled);
+      const elements = [...dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(element => !element.disabled);
       if (!elements.length) return;
       const firstElement = elements[0];
       const lastElement = elements[elements.length - 1];
@@ -33,7 +40,7 @@ export function Modal({ children, onClose, className = '' }) {
       document.removeEventListener('keydown', handleKeyDown);
       previousFocus.current?.focus?.();
     };
-  }, [onClose]);
+  }, []); // Run ONLY once on mount, jangan re-run saat re-render parent
 
   return (
     <div className="modal-overlay" onClick={onClose}>
