@@ -1,5 +1,6 @@
 import { Droppable } from '@hello-pangea/dnd';
 import { TaskCard } from './TaskCard';
+import { IconEdit, IconShare, IconTrash, IconPlus } from './Icons';
 
 export function KanbanColumn({
   board,
@@ -25,12 +26,41 @@ export function KanbanColumn({
           <div className="board-header">
             <h2>
               <span className="board-title-text">{board.title}</span>
-              <span className="board-count">{visibleTasks.length}/{boardTasks.length}</span>
+              <span className="board-count" title={`${visibleTasks.length} ditampilkan dari ${boardTasks.length} tugas`}>
+                {visibleTasks.length}/{boardTasks.length}
+              </span>
             </h2>
             <div className="board-actions">
-              {canEdit && <button type="button" onClick={() => onOpenEditBoard(board)} aria-label={`Edit board ${board.title}`} title="Ubah nama kolom">✎</button>}
-              {board.access_role === 'owner' && <button type="button" onClick={() => onOpenShareBoard(board)} aria-label={`Bagikan board ${board.title}`} title="Bagikan board">♧</button>}
-              {board.access_role === 'owner' && <button type="button" onClick={() => onRequestDeleteBoard(board)} aria-label={`Hapus board ${board.title}`} title="Hapus kolom">×</button>}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onOpenEditBoard(board)}
+                  aria-label={`Edit board ${board.title}`}
+                  title="Ubah nama kolom"
+                >
+                  <IconEdit size={13} />
+                </button>
+              )}
+              {board.access_role === 'owner' && (
+                <button
+                  type="button"
+                  onClick={() => onOpenShareBoard(board)}
+                  aria-label={`Bagikan board ${board.title}`}
+                  title="Bagikan board"
+                >
+                  <IconShare size={13} />
+                </button>
+              )}
+              {board.access_role === 'owner' && (
+                <button
+                  type="button"
+                  onClick={() => onRequestDeleteBoard(board)}
+                  aria-label={`Hapus board ${board.title}`}
+                  title="Hapus kolom"
+                >
+                  <IconTrash size={13} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -47,11 +77,24 @@ export function KanbanColumn({
               />
             ))}
             {provided.placeholder}
+
+            {visibleTasks.length === 0 && !snapshot.isDraggingOver && (
+              <div className="column-empty-state">
+                <span>Belum ada tugas</span>
+              </div>
+            )}
           </div>
 
-          {canEdit && <button className="add-task-btn" onClick={() => onOpenAddTask(board.id)}>
-            Tambah Tugas
-          </button>}
+          {canEdit && (
+            <button
+              type="button"
+              className="add-task-btn"
+              onClick={() => onOpenAddTask(board.id)}
+            >
+              <IconPlus size={15} />
+              <span>Tambah Tugas</span>
+            </button>
+          )}
         </section>
       )}
     </Droppable>

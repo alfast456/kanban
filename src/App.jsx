@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { PRIORITIES } from './utils/taskUtils.mjs';
 import { Modal, ConfirmModal } from './components/Modal';
@@ -7,6 +7,17 @@ import { TaskForm } from './components/TaskForm';
 import { TaskDetail } from './components/TaskDetail';
 import { BoardForm } from './components/BoardForm';
 import { AuthForm } from './components/AuthForm';
+import {
+  IconKanban,
+  IconSun,
+  IconMoon,
+  IconUser,
+  IconLogout,
+  IconSearch,
+  IconPlus,
+  IconEdit,
+  IconClose,
+} from './components/Icons';
 import './App.css';
 
 function App() {
@@ -117,9 +128,12 @@ function App() {
   }, [toast]);
 
   const notify = (type, message) => setToast({ type, message });
-  const isVisibleTask = task =>
+
+  const isVisibleTask = useCallback(task =>
     task.content.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
-    (!filterPriority || task.priority === filterPriority);
+    (!filterPriority || task.priority === filterPriority),
+    [searchQuery, filterPriority]
+  );
 
   const openAddTask = boardId => {
     setTaskModal({ boardId, task: null });
@@ -338,52 +352,152 @@ function App() {
     notify('success', 'Berhasil keluar.');
   };
 
-  if (loading) return <div>Memuat Papan Kanban...</div>;
+  const totalTasksCount = useMemo(() => {
+    return Object.values(tasks).reduce((sum, list) => sum + (list ? list.length : 0), 0);
+  }, [tasks]);
+
+  const priorityCounts = useMemo(() => {
+    const counts = { Low: 0, Medium: 0, High: 0 };
+    Object.values(tasks).forEach(list => {
+      list?.forEach(task => {
+        if (counts[task.priority] !== undefined) counts[task.priority]++;
+      });
+    });
+    return counts;
+  }, [tasks]);
+
+  if (loading) {
+    return (
+      <div className="app-loading-screen" role="status" aria-label="Memuat aplikasi">
+        <div className="loading-spinner" aria-hidden="true" />
+        <p className="loading-text">Memuat Papan Kanban...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
       <header className="header">
-        <h1><span className="brand-mark" aria-hidden="true">⚡</span><span>My Personal Kanban</span></h1>
+        <div className="brand-group">
+          <div className="brand-mark" aria-hidden="true">
+            <IconKanban size={18} />
+          </div>
+          <h1>My Personal Kanban</h1>
+        </div>
+
         <div className="header-actions">
           {authUser ? (
             <div className="user-badge">
+              <span className="user-avatar" aria-hidden="true">
+                <IconUser size={14} />
+              </span>
               <span className="user-name">@{authUser.username}</span>
-              <button className="auth-btn" onClick={handleLogout}>Keluar</button>
+              <button
+                type="button"
+                className="auth-btn logout-btn"
+                onClick={handleLogout}
+                title="Keluar dari akun"
+              >
+                <IconLogout size={14} />
+                <span>Keluar</span>
+              </button>
             </div>
           ) : (
-            <button className="auth-btn" onClick={() => { setAuthError(''); setAuthModal('login'); }}>Masuk</button>
+            <button
+              type="button"
+              className="auth-btn"
+              onClick={() => { setAuthError(''); setAuthModal('login'); }}
+            >
+              <IconUser size={14} />
+              <span>Masuk</span>
+            </button>
           )}
-          <button className="theme-toggle" onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}>
-            {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
+
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setTheme(value => value === 'light' ? 'dark' : 'light')}
+            aria-label={theme === 'light' ? 'Aktifkan Mode Gelap' : 'Aktifkan Mode Terang'}
+          >
+            {theme === 'light' ? (
+              <>
+                <IconMoon size={15} />
+                <span>🌙 Dark Mode</span>
+              </>
+            ) : (
+              <>
+                <IconSun size={15} />
+                <span>☀️ Light Mode</span>
+              </>
+            )}
           </button>
         </div>
       </header>
 
       <div className="board-toolbar">
-        <div>
+        <div className="toolbar-headline">
           <span className="eyebrow">WORKSPACE</span>
-          <h2 className="workspace-title">Board saya</h2>
+          <div className="workspace-title-row">
+            <h2 className="workspace-title">Board saya</h2>
+            <div className="workspace-metrics">
+              <span className="metric-badge">{boards.length} Kolom</span>
+              <span className="metric-badge">{totalTasksCount} Tugas</span>
+            </div>
+          </div>
         </div>
-        <button className="add-board-btn toolbar-add-board" onClick={openAddBoard}>+ Tambah Kolom</button>
+
+        <button
+          type="button"
+          className="add-board-btn toolbar-add-board"
+          onClick={openAddBoard}
+        >
+          <IconPlus size={16} />
+          <span>Tambah Kolom</span>
+        </button>
       </div>
 
       <div className="task-filters">
-        <label className="search-wrap">
-          <span aria-hidden="true">⌕</span>
+        <div className="search-wrap">
+          <IconSearch size={16} className="search-icon" />
           <input
-          className="task-search"
-          type="search"
-          value={searchQuery}
-          onChange={event => setSearchQuery(event.target.value)}
-          placeholder="Cari tugas..."
-          aria-label="Cari tugas"
-        />
-        </label>
-        <div className="filter-priorities" aria-label="Filter prioritas">
-          <button className={!filterPriority ? 'active' : ''} onClick={() => setFilterPriority('')}>Semua</button>
+            className="task-search"
+            type="search"
+            value={searchQuery}
+            onChange={event => setSearchQuery(event.target.value)}
+            placeholder="Cari tugas berdasarkan judul..."
+            aria-label="Cari tugas"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearchQuery('')}
+              aria-label="Hapus pencarian"
+            >
+              <IconClose size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="filter-priorities" role="group" aria-label="Filter prioritas">
+          <button
+            type="button"
+            className={!filterPriority ? 'active' : ''}
+            onClick={() => setFilterPriority('')}
+          >
+            <span>Semua</span>
+            <span className="filter-count">{totalTasksCount}</span>
+          </button>
           {PRIORITIES.map(priority => (
-            <button key={priority} className={filterPriority === priority ? 'active' : ''} onClick={() => setFilterPriority(priority)}>
-              {priority}
+            <button
+              type="button"
+              key={priority}
+              className={`${filterPriority === priority ? 'active' : ''} filter-btn-${priority.toLowerCase()}`}
+              onClick={() => setFilterPriority(priority)}
+            >
+              <span className={`priority-indicator-dot priority-${priority.toLowerCase()}`} aria-hidden="true" />
+              <span>{priority}</span>
+              <span className="filter-count">{priorityCounts[priority] || 0}</span>
             </button>
           ))}
         </div>
@@ -411,7 +525,14 @@ function App() {
               />
             );
           })}
-          <button className="add-board-btn board-add-card" onClick={openAddBoard}>+ Tambah board lain</button>
+          <button
+            type="button"
+            className="add-board-btn board-add-card"
+            onClick={openAddBoard}
+          >
+            <IconPlus size={16} />
+            <span>Tambah board lain</span>
+          </button>
         </main>
       </DragDropContext>
 
@@ -426,7 +547,19 @@ function App() {
             onTaskChange={updateViewedTask}
           />
           {boards.find(board => board.id === viewingTask.board_id)?.access_role !== 'viewer' && (
-            <div className="modal-actions"><button className="edit-btn-large" onClick={() => { setViewingTask(null); openEditTask(viewingTask, viewingTask.board_id); }}>✎ Edit Tugas</button></div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="edit-btn-large"
+                onClick={() => {
+                  setViewingTask(null);
+                  openEditTask(viewingTask, viewingTask.board_id);
+                }}
+              >
+                <IconEdit size={15} />
+                <span>Edit Tugas</span>
+              </button>
+            </div>
           )}
         </Modal>
       )}
@@ -446,20 +579,36 @@ function App() {
 
       {sharingBoard && (
         <Modal onClose={() => setSharingBoard(null)}>
-          <h3>Bagikan Board</h3>
+          <div className="modal-header">
+            <h3>Bagikan Board</h3>
+            <p className="modal-subtitle">Berikan akses ke anggota lain untuk melihat atau mengedit kolom ini</p>
+          </div>
           <form onSubmit={shareBoard}>
             <div className="form-group">
               <label htmlFor="share-username">Username</label>
-              <input id="share-username" value={shareUsername} onChange={event => setShareUsername(event.target.value)} required />
+              <input
+                id="share-username"
+                value={shareUsername}
+                onChange={event => setShareUsername(event.target.value)}
+                placeholder="Ketik username anggota..."
+                required
+              />
             </div>
             <div className="form-group">
               <label htmlFor="share-role">Akses</label>
-              <select id="share-role" value={shareRole} onChange={event => setShareRole(event.target.value)}>
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
+              <select
+                id="share-role"
+                value={shareRole}
+                onChange={event => setShareRole(event.target.value)}
+              >
+                <option value="viewer">Viewer (Hanya Baca)</option>
+                <option value="editor">Editor (Bisa Edit & Tambah)</option>
               </select>
             </div>
-            <div className="modal-actions"><button type="button" className="cancel-btn" onClick={() => setSharingBoard(null)}>Batal</button><button className="save-btn">Bagikan</button></div>
+            <div className="modal-actions">
+              <button type="button" className="cancel-btn" onClick={() => setSharingBoard(null)}>Batal</button>
+              <button type="submit" className="save-btn">Bagikan</button>
+            </div>
           </form>
         </Modal>
       )}
@@ -488,9 +637,32 @@ function App() {
         </Modal>
       )}
 
-      {taskToDelete && <ConfirmModal title="Hapus Tugas?" text="Apakah Anda yakin ingin menghapus tugas ini? Tindakan ini tidak dapat dibatalkan." onCancel={() => setTaskToDelete(null)} onConfirm={deleteTask} />}
-      {boardToDelete && <ConfirmModal title="Hapus Kolom?" text="Semua tugas di dalam kolom ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan." onCancel={() => setBoardToDelete(null)} onConfirm={deleteBoard} />}
-      {toast && <div className={`toast-notification toast-${toast.type}`}>{toast.message}</div>}
+      {taskToDelete && (
+        <ConfirmModal
+          title="Hapus Tugas?"
+          text="Apakah Anda yakin ingin menghapus tugas ini? Tindakan ini tidak dapat dibatalkan."
+          onCancel={() => setTaskToDelete(null)}
+          onConfirm={deleteTask}
+        />
+      )}
+
+      {boardToDelete && (
+        <ConfirmModal
+          title="Hapus Kolom?"
+          text="Semua tugas di dalam kolom ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan."
+          onCancel={() => setBoardToDelete(null)}
+          onConfirm={deleteBoard}
+        />
+      )}
+
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`} role="status">
+          <span className="toast-icon" aria-hidden="true">
+            {toast.type === 'success' ? '✓' : '!'}
+          </span>
+          <span className="toast-text">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

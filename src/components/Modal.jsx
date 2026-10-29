@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { IconAlert } from './Icons';
 
 export function Modal({ children, onClose, className = '' }) {
   const dialogRef = useRef(null);
@@ -52,12 +53,14 @@ export function Modal({ children, onClose, className = '' }) {
 export function ConfirmModal({ title, text, onCancel, onConfirm }) {
   return (
     <Modal onClose={onCancel} className="confirm-modal">
-      <div className="confirm-icon">⚠️</div>
+      <div className="confirm-icon" aria-hidden="true">
+        <IconAlert size={36} />
+      </div>
       <h3>{title}</h3>
       <p>{text}</p>
       <div className="modal-actions">
-        <button className="cancel-btn" onClick={onCancel}>Batal</button>
-        <button className="delete-confirm-btn" onClick={onConfirm}>Ya, Hapus</button>
+        <button type="button" className="cancel-btn" onClick={onCancel}>Batal</button>
+        <button type="button" className="delete-confirm-btn" onClick={onConfirm}>Ya, Hapus</button>
       </div>
     </Modal>
   );

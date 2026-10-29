@@ -3,7 +3,9 @@ import { PRIORITIES } from '../utils/taskUtils.mjs';
 export function TaskForm({ form, onChange, onSubmit, onCancel, isEditing }) {
   return (
     <>
-      <h3>{isEditing ? '✨ Edit Tugas' : '✨ Buat Tugas Baru'}</h3>
+      <div className="modal-header">
+        <h3>{isEditing ? 'Edit Tugas' : 'Buat Tugas Baru'}</h3>
+      </div>
       <form onSubmit={onSubmit}>
         <div className="form-group">
           <label htmlFor="task-content">Judul Tugas</label>
@@ -27,21 +29,30 @@ export function TaskForm({ form, onChange, onSubmit, onCancel, isEditing }) {
         </div>
         <div className="form-group">
           <label htmlFor="task-due-date">Tanggal Tenggat (Opsional)</label>
-          <input id="task-due-date" type="date" value={form.due_date} onChange={event => onChange({ due_date: event.target.value })} />
+          <input
+            id="task-due-date"
+            type="date"
+            value={form.due_date}
+            onChange={event => onChange({ due_date: event.target.value })}
+          />
         </div>
-        <div className="priority-form-row">
+        <div className="form-group">
           <label>Tingkat Prioritas</label>
-          <div className="priority-selectors">
-            {PRIORITIES.map(priority => (
-              <button
-                type="button"
-                key={priority}
-                className={`priority-select-btn ${form.priority === priority ? 'active' : ''} priority-${priority.toLowerCase()}`}
-                onClick={() => onChange({ priority })}
-              >
-                {priority}
-              </button>
-            ))}
+          <div className="priority-selectors" role="group" aria-label="Tingkat Prioritas">
+            {PRIORITIES.map(priority => {
+              const pKey = priority.toLowerCase();
+              return (
+                <button
+                  type="button"
+                  key={priority}
+                  className={`priority-select-btn ${form.priority === priority ? 'active' : ''} priority-btn-${pKey}`}
+                  onClick={() => onChange({ priority })}
+                >
+                  <span className={`priority-indicator-dot priority-${pKey}`} aria-hidden="true" />
+                  {priority}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="modal-actions">

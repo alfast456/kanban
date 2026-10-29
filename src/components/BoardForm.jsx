@@ -1,7 +1,9 @@
 export function BoardForm({ title, onChange, onSubmit, onCancel, isEditing }) {
   return (
     <>
-      <h3>{isEditing ? '✎ Ubah Nama Kolom' : '+ Tambah Kolom'}</h3>
+      <div className="modal-header">
+        <h3>{isEditing ? 'Ubah Nama Kolom' : 'Tambah Kolom'}</h3>
+      </div>
       <form onSubmit={onSubmit}>
         <div className="form-group">
           <label htmlFor="board-title">Nama Kolom</label>
@@ -10,7 +12,7 @@ export function BoardForm({ title, onChange, onSubmit, onCancel, isEditing }) {
             autoFocus
             value={title}
             onChange={event => onChange(event.target.value)}
-            placeholder="Misal: Dalam Proses"
+            placeholder="Misal: Dalam Proses, Selesai..."
           />
         </div>
         <div className="modal-actions">
